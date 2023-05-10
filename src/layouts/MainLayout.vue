@@ -31,14 +31,11 @@
         <q-btn :style="setButtonColor(button)" v-for="(button, index) in buttons" :key="index" :label="button.name"
           @click="setActive(button, index)" class="q-ma-sm text-white" />
       </article>
-      {{ sortExpenses }}
-      {{ setPriceFilter }}
+
       <q-btn :icon="`keyboard_arrow_${sortExpenses.byDate ? 'up' : 'down'}`" @click="toggleSortByDate()">Ordenar por
         fecha</q-btn>
       <q-btn :icon="`keyboard_arrow_${sortExpenses.byPrice ? 'up' : 'down'}`" @click="toggleSortByPrice()">Ordenar por
         precio €</q-btn>
-      {{ filteredExpenses().length }}
-      {{ monthExpenses.length }}
       <Doughnut :data="doughnutData" :options="options" />
       <ExpensesList :data="filteredExpenses()" />
     </article>
@@ -73,7 +70,7 @@ const dataSets = ref(null)
 const currentMonth = ref(null)
 const currentMonthNumber = ref(moment().month())
 const expensesAmount = ref(323)
-const expenses = ref(null)
+/* const expenses = ref(null) */
 const setPriceFilter = ref(false)
 const monthExpenses = ref([])
 
@@ -906,7 +903,8 @@ onMounted(async () => {
   transformExpensesToChartData()
   setMonth()
   setDoughnutChart()
-  console.log(expenses)
+  /*   console.log(expenses)
+   */
 })
 const changeMonth = (month) => {
   currentMonthNumber.value = month.month - 1
@@ -931,17 +929,32 @@ const setDoughnutChart = () => {
   const filters = buttons.value.filter(el => el.onOff).map(el => el.name)
 
   const defaultColors = categories.value.map(el => el.color)
-  console.log(defaultColors)
-  for (let i = 0; i < defaultColors.length; i++) {
-    const categoria = defaultColors[i].name
-    if (filters.includes(categoria)) {
-      result.push(defaultColors[i].color)
-    } else {
-      result.push('#cccccc')
+
+  let resultColors = []
+
+  if (filters.length === 0) {
+    resultColors = defaultColors
+  } else {
+    for (let i = 0; i < categories.value.length; i++) {
+      const category = categories.value[i]
+      console.log(category.color)
+      if (filters.includes(category.name)) {
+        resultColors.push(category.color)
+      } else {
+        resultColors.push('#cccccc')
+      }
     }
+
   }
+
+
+
+
+  console.log('setting colors', defaultColors)
+  const saveData = [...filteredExpenses()]
+  console.log(filteredExpenses().length, saveData.length, monthExpenses.value.length)
   optionsNames.forEach((el) => {
-    const element = filteredExpenses()
+    const element = monthExpenses.value
       .filter((exp) => exp.category === el)
       .map((el) => parseInt(el.price))
       .reduce((acc, curr) => acc + curr, 0)
@@ -951,12 +964,12 @@ const setDoughnutChart = () => {
     labels: categories.value.map(el => el.name),
     datasets: [
       {
-        backgroundColor: defaultColors,
+        backgroundColor: resultColors,
         data: data
       }
     ]
   }
-  console.log('data', data)
+  console.log('setting data', data)
 }
 const setActive = (button, index) => {
   /* COLOR DEL BOTÓN AL ACTIVAR LOS FILTROS */
@@ -964,7 +977,6 @@ const setActive = (button, index) => {
   buttons.value[index].onOff = !buttons.value[index].onOff
   const filters = buttons.value.filter(el => el.onOff).map(el => el.name)
   /* setChartColors(filters, saveData) */
-  console.log('active', saveData, filteredExpenses())
   setDoughnutChart()
 }
 
@@ -1025,8 +1037,6 @@ const filteredExpenses = () => {
   if (setPriceFilter.value) {
     sortedArray = !sortExpenses.value.byPrice ? result.sort((a, b) => a.price - b.price) : result.sort((a, b) => b.price - a.price)
   }
-
-
 
   return sortedArray
 }
