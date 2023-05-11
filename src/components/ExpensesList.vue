@@ -52,7 +52,6 @@ const handleEdit = () => {
       </q-item-section>
     </q-item>
   </q-list>
-  <button @click="showDeleteDialog = !showDeleteDialog"></button>
 
   <q-dialog v-model="showDeleteDialog">
     <q-card>

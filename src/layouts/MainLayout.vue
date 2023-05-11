@@ -54,7 +54,6 @@
         </q-btn>
       </div>
       <!-- /FILTERS -->
-
       <Doughnut :data="doughnutData" :options="options" class="q-my-md" />
       <ExpensesList :data="filteredExpenses()" @delete-item="deleteItem" @edit-item="editItem" />
     </section>
@@ -929,14 +928,26 @@ const addItem = async (expense) => {
   await _createExpense(expense)
   await init()
 }
-
+/* const restoreDB = async () => {
+  const testArray = hardExpenses.value
+  for (let i = 0; i < testArray.length; i++) {
+    const expense = testArray[i]
+    delete expense.id
+    delete expense.created_at
+    delete expense.created_at
+    delete expense.updated_at
+    delete expense.url
+    setTimeout(() => {
+      _createExpense(expense)
+    }, 1000)
+  }
+} */
 const editItem = async () => {
   setTimeout(() => {
     init()
   }, 3600)
 }
 const deleteItem = async (expense) => {
-  console.log('parent', expense)
   await _deleteExpenseFromDB(expense.id)
   await init()
 }
@@ -944,17 +955,18 @@ const buttons = ref(categories.value.map(el => ({ ...el, onOff: false })))
 onMounted(async () => {
   expensesAPI.value = await _getExpensesFromDB()
   transformExpensesToChartData()
+  filteredExpenses()
   setMonth()
   doughnutData.value.labels = categories.value.map(el => el.name)
   setDoughnutChart()
   formData.value.date = date.value
-  /*   console.log(expenses)
-   */
 })
 const changeMonth = (month) => {
   currentMonthNumber.value = month.month - 1
-  setMonth()
-  setDoughnutChart()
+  setTimeout(() => {
+    setMonth()
+    setDoughnutChart()
+  }, 1)
 }
 
 const init = async () => {
@@ -972,11 +984,9 @@ const toggleSortByDate = () => {
 }
 
 const setDoughnutChart = () => {
-  console.log('setDoughnutChart')
   const optionsNames = categories.value.map((el) => el.name)
   const data = []
   const filters = buttons.value.filter(el => el.onOff).map(el => el.name)
-
   const defaultColors = categories.value.map(el => el.color)
 
   let resultColors = []
@@ -986,17 +996,13 @@ const setDoughnutChart = () => {
   } else {
     for (let i = 0; i < categories.value.length; i++) {
       const category = categories.value[i]
-      console.log(category.color)
       if (filters.includes(category.name)) {
         resultColors.push(category.color)
       } else {
         resultColors.push('#cccccc')
       }
     }
-
   }
-
-
 
   filteredExpenses()
   optionsNames.forEach((el) => {
@@ -1015,7 +1021,6 @@ const setDoughnutChart = () => {
       }
     ]
   }
-  console.log('setting data', data)
 }
 const setActive = (button, index) => {
   /* COLOR DEL BOTÓN AL ACTIVAR LOS FILTROS */
@@ -1045,7 +1050,6 @@ const filterExpensesByDay = () => {
   }) */
 /*   for (let i = 0; i < defaultColors.length; i++) {
     const categoria = defaultColors[i].name
-    console.log(categoria)
     if (filters.includes(categoria)) {
       result.push(defaultColors[i].color)
     } else {
@@ -1062,7 +1066,6 @@ const filterExpensesByDay = () => {
       }
     ]
   }
-  console.log('result', result, saveData)
 } */
 const filteredExpenses = () => {
   const current = currentMonthNumber.value
@@ -1102,6 +1105,8 @@ const setMonth = () => {
   currentMonth.value = moment()
     .month(currentMonthNumber.value)
     .format('MMMM')
+  const totalAmount = monthExpenses.value.map(el => el.price).reduce((a, b) => a + b, 0)
+  expensesAmount.value = totalAmount
 }
 const transformExpensesToChartData = () => {
   const result = []
