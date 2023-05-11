@@ -1,23 +1,37 @@
 <template>
-  <section>
-    <article style="background-color: #e0e0e0" class="row justify-center items-center">
-      <div class="text-h5 text-bold text-positive">
-        Home Finance Fenix
-        <q-icon name="bird" size="lg" color="positive" />
-      </div>
-    </article>
-    <article class="row justify-center">
-      <div class="q-my-md text-h5 text-bold">
-        {{ currentMonth }}
-      </div>
-      <div class="q-my-md text-h5 q-px-sm">{{ expensesAmount }} €</div>
-    </article>
-    <article class="bars-container">
-      <Bar :key="chartKey" :data="data" :options="options" />
+  <main>
+    <!-- HEADER -->
+    <section>
+      <article style="background-color: #e0e0e0" class="row justify-center items-center">
+        <div class="text-h5 text-bold text-positive">
+          Home Finance Fenix
+          <q-icon name="show_chart" size="lg" color="positive" />
+        </div>
+      </article>
+      <article class="row justify-center">
+        <div class="q-my-md text-h5 text-bold">
+          {{ currentMonth }}
+        </div>
+        <div class="q-my-md text-h5 q-px-sm">{{ expensesAmount }} €</div>
+      </article>
+    </section>
+    <!-- /HEADER -->
+    <section class="bars-container">
+      <FormInput @addItem="addItem" />
+      <!-- INPUT -->
+      <!-- /INPUT -->
+      <!-- BARS -->
+      <q-btn :label="showBars ? 'Ocultar' : 'Comparar meses'" :icon="showBars ? 'visibility_off' : 'leaderboard'" flat
+        @click="showBars = !showBars" :color="showBars ? 'grey' : 'primary'" size="sm" class="q-mb-md self-start" />
+      <Bar v-show="showBars" :key="chartKey" :data="data" :options="options" />
+      <!-- /BARS -->
+      <!-- CALENDAR -->
       <div class="row justify-center">
         <q-date v-model="date" minimal @navigation="(a) => changeMonth(a)"
           :events="filteredExpenses().map((el) => el.date)" />
       </div>
+      <!-- /CALENDAR -->
+      <!-- FILTERS -->
       <ul>
         <li v-for="expense in filterExpensesByDay()" :key="expense.id">
           {{ expense.concept }} -- <span class="text-bold" :style="`color: ${categoryColor(expense.category)}`"> {{
@@ -31,18 +45,20 @@
         <q-btn :style="setButtonColor(button)" v-for="(button, index) in buttons" :key="index" :label="button.name"
           @click="setActive(button, index)" class="q-ma-sm text-white" />
       </article>
+      <div>
+        <q-btn flat class="q-pa-md" :icon="`keyboard_arrow_${sortExpenses.byDate ? 'up' : 'down'}`"
+          @click="toggleSortByDate()"><q-icon name="calendar_month" /></q-btn>
+        <q-btn flat class="q-pa-md" :icon="`keyboard_arrow_${sortExpenses.byPrice ? 'up' : 'down'}`"
+          @click="toggleSortByPrice()">
+          <q-icon name="euro" />
+        </q-btn>
+      </div>
+      <!-- /FILTERS -->
 
-      <q-btn :icon="`keyboard_arrow_${sortExpenses.byDate ? 'up' : 'down'}`" @click="toggleSortByDate()">Ordenar por
-        fecha</q-btn>
-      <q-btn :icon="`keyboard_arrow_${sortExpenses.byPrice ? 'up' : 'down'}`" @click="toggleSortByPrice()">Ordenar por
-        precio €</q-btn>
-      <Doughnut :data="doughnutData" :options="options" />
-      <ExpensesList :data="filteredExpenses()" />
-    </article>
-  </section>
-  <div>
-
-  </div>
+      <Doughnut :data="doughnutData" :options="options" class="q-my-md" />
+      <ExpensesList :data="filteredExpenses()" @delete-item="deleteItem" @edit-item="editItem" />
+    </section>
+  </main>
 </template>
 
 <script setup>
@@ -50,9 +66,11 @@ import moment from 'moment'
 import { ref, onMounted } from 'vue'
 import { options } from '../chartConfig.js'
 import ExpensesList from '../components/ExpensesList.vue'
+import FormInput from '../components/FormInput.vue'
+
 import { CATEGORIES } from 'src/consts'
 
-/* import { mainComposable } from '../composables/main' */
+import { mainComposable } from '../composables/main'
 import {
   Chart as ChartJS,
   Title,
@@ -65,7 +83,7 @@ import {
 } from 'chart.js'
 import { Bar, Doughnut } from 'vue-chartjs'
 ChartJS.register(CategoryScale, LinearScale, ArcElement, BarElement, Title, Tooltip, Legend)
-/* const { _getExpensesFromDB } = mainComposable() */
+const { _getExpensesFromDB, _createExpense, _deleteExpenseFromDB } = mainComposable()
 const dataSets = ref(null)
 const currentMonth = ref(null)
 const currentMonthNumber = ref(moment().month())
@@ -73,6 +91,15 @@ const expensesAmount = ref(323)
 /* const expenses = ref(null) */
 const setPriceFilter = ref(false)
 const monthExpenses = ref([])
+const expensesAPI = ref([])
+
+const showBars = ref(false)
+const formData = ref({
+  price: null,
+  concept: null,
+  category: null,
+  date: null
+})
 
 const categories = ref(CATEGORIES)
 const sortExpenses = ref({
@@ -865,11 +892,11 @@ const hardExpenses = ref([
   }
 ])
 const doughnutData = ref({
-  labels: ['VueJs', 'EmberJs', 'ReactJs', 'AngularJs'],
+  labels: null,
   datasets: [
     {
-      backgroundColor: ['#41B883', '#E46651', '#00D8FF', '#DD1B16'],
-      data: [40, 20, 80, 10]
+      backgroundColor: categories.value.map(el => el.color),
+      data: [0, 0, 0, 0, 0, 0]
     }
   ]
 })
@@ -897,18 +924,41 @@ const data = ref({
   ]
 })
 
+const addItem = async (expense) => {
+  /* d */
+  await _createExpense(expense)
+  await init()
+}
+
+const editItem = async () => {
+  setTimeout(() => {
+    init()
+  }, 3600)
+}
+const deleteItem = async (expense) => {
+  console.log('parent', expense)
+  await _deleteExpenseFromDB(expense.id)
+  await init()
+}
 const buttons = ref(categories.value.map(el => ({ ...el, onOff: false })))
 onMounted(async () => {
-  /*  expenses.value = await _getExpensesFromDB() */
+  expensesAPI.value = await _getExpensesFromDB()
   transformExpensesToChartData()
   setMonth()
+  doughnutData.value.labels = categories.value.map(el => el.name)
   setDoughnutChart()
+  formData.value.date = date.value
   /*   console.log(expenses)
    */
 })
 const changeMonth = (month) => {
   currentMonthNumber.value = month.month - 1
   setMonth()
+  setDoughnutChart()
+}
+
+const init = async () => {
+  expensesAPI.value = await _getExpensesFromDB()
   setDoughnutChart()
 }
 
@@ -925,7 +975,6 @@ const setDoughnutChart = () => {
   console.log('setDoughnutChart')
   const optionsNames = categories.value.map((el) => el.name)
   const data = []
-  const result = []
   const filters = buttons.value.filter(el => el.onOff).map(el => el.name)
 
   const defaultColors = categories.value.map(el => el.color)
@@ -949,10 +998,7 @@ const setDoughnutChart = () => {
 
 
 
-
-  console.log('setting colors', defaultColors)
-  const saveData = [...filteredExpenses()]
-  console.log(filteredExpenses().length, saveData.length, monthExpenses.value.length)
+  filteredExpenses()
   optionsNames.forEach((el) => {
     const element = monthExpenses.value
       .filter((exp) => exp.category === el)
@@ -973,9 +1019,7 @@ const setDoughnutChart = () => {
 }
 const setActive = (button, index) => {
   /* COLOR DEL BOTÓN AL ACTIVAR LOS FILTROS */
-  const saveData = [...filteredExpenses()]
   buttons.value[index].onOff = !buttons.value[index].onOff
-  const filters = buttons.value.filter(el => el.onOff).map(el => el.name)
   /* setChartColors(filters, saveData) */
   setDoughnutChart()
 }
@@ -1023,7 +1067,7 @@ const filterExpensesByDay = () => {
 const filteredExpenses = () => {
   const current = currentMonthNumber.value
 
-  const array = hardExpenses.value.filter(
+  const array = expensesAPI.value.filter(
     (el) => moment(el.date, 'YYYY/MM/DD').month() === current
   )
   monthExpenses.value = array
