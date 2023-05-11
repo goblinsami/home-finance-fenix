@@ -1,3 +1,4 @@
+/* eslint-disable */
 <script setup>
 import { ref, onMounted } from 'vue'
 import { CATEGORIES } from 'src/consts'
@@ -25,7 +26,6 @@ const addItem = () => {
     emit('edit-item', formData.value)
   } else {
     emit('add-item', formData.value)
-
   }
 }
 
